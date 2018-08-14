@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"reflect"
+//	"fmt"
 )
 
 // Copy copy things
@@ -76,19 +77,31 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 							}
 						}
 					}
+				}  
+
+				// try to set to method
+				var toMethod reflect.Value
+				if dest.CanAddr() {
+					toMethod = dest.Addr().MethodByName(name)
 				} else {
-					// try to set to method
-					var toMethod reflect.Value
+					toMethod = dest.MethodByName(name)
+				}
+
+				if toMethod.IsValid() && toMethod.Type().NumIn() == 1 && fromField.Type().AssignableTo(toMethod.Type().In(0)) {
+					toMethod.Call([]reflect.Value{fromField})
+				} else {
+					// try to set to method with different type
 					if dest.CanAddr() {
-						toMethod = dest.Addr().MethodByName(name)
+						toMethod = dest.Addr().MethodByName("To_" + name)
 					} else {
-						toMethod = dest.MethodByName(name)
+						toMethod = dest.MethodByName("To_" + name)
 					}
 
 					if toMethod.IsValid() && toMethod.Type().NumIn() == 1 && fromField.Type().AssignableTo(toMethod.Type().In(0)) {
 						toMethod.Call([]reflect.Value{fromField})
 					}
 				}
+
 			}
 		}
 
@@ -110,9 +123,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 						set(toField, values[0])
 					}
 				}
-			}
-
-
+			} else {
 			// custorm, add support different type convert
 			cname := name + "_Convert"
 			if source.CanAddr() {
@@ -127,6 +138,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 						set(toField, values[0])
 					}
 				}
+			}
 			}
 
 		}
