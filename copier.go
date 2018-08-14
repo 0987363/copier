@@ -111,6 +111,24 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 					}
 				}
 			}
+
+
+			// custorm, add support different type convert
+			cname := name + "_Convert"
+			if source.CanAddr() {
+				fromMethod = source.Addr().MethodByName(cname)
+			} else {
+				fromMethod = source.MethodByName(cname)
+			}
+			if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 {
+				if toField := dest.FieldByName(name); toField.IsValid() && toField.CanSet() {
+					values := fromMethod.Call([]reflect.Value{})
+					if len(values) >= 1 {
+						set(toField, values[0])
+					}
+				}
+			}
+
 		}
 
 		if isSlice {
